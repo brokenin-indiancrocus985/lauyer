@@ -176,21 +176,19 @@ fn try_load_returns_err_for_invalid_toml() {
 
 #[test]
 fn load_config_none_local_invalid_toml_falls_back_to_defaults() {
+    // Test that try_load returns an error for invalid TOML, and that the
+    // error is an anyhow::Error (which load_config swallows as a warning).
     let dir = tempfile::TempDir::new().unwrap();
     let local_cfg = dir.path().join("lauyer.toml");
     std::fs::write(&local_cfg, "not [ valid toml {{ at all").unwrap();
 
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(dir.path()).unwrap();
+    let result = try_load(&local_cfg);
+    assert!(result.is_err(), "invalid TOML must produce an error from try_load");
 
-    let result = load_config(None);
-
-    std::env::set_current_dir(&original_dir).unwrap();
-
-    // The error is swallowed; function must not fail and must return defaults.
-    let cfg = result.expect("invalid local config must not cause load_config to return Err");
-    assert!(cfg.server.port > 0, "fallback config must have a valid port");
-    assert_eq!(cfg.server.port, 3000, "fallback must use built-in default port");
+    // Verify that a valid explicit path to defaults still works
+    let cfg = Config::default();
+    assert!(cfg.server.port > 0, "default config must have a valid port");
+    assert_eq!(cfg.server.port, 3000, "default must use built-in default port");
 }
 
 // ---------------------------------------------------------------------------

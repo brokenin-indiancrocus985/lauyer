@@ -338,11 +338,27 @@ lauyer --format json dr types
 - [ ] Each entry has `alias` and `name` fields
 - [ ] 10 act types listed
 
-### `dr fetch` — Not implemented
+### `dr search` — Fetch full text
 ```bash
-lauyer dr fetch "https://example.com"
+lauyer dr search --type portaria --recent 1w --limit 2 --fetch-full
 ```
-- [ ] Returns error (not implemented yet)
+- [ ] Returns full legislation text for each result
+- [ ] Each result includes texto, url_pdf, eli, dr_url
+- [ ] dr_url points to official diariodarepublica.pt
+
+### `dr search` — Fetch full text JSON
+```bash
+lauyer --format json --quiet dr search --type portaria --recent 1w --limit 1 --fetch-full
+```
+- [ ] Valid JSON with texto, url_pdf, eli, dr_url, _disclaimer fields
+- [ ] _disclaimer present about interpretation errors
+
+### `dr search` — Follow up on specific act
+```bash
+lauyer --format json --quiet dr search "portaria 123-A/2026" --limit 1 --fetch-full
+```
+- [ ] Returns full text of the specific portaria
+- [ ] conteudo_id populated in search results
 
 ---
 
@@ -487,4 +503,6 @@ lauyer --format table dgsi search "$QUERY" --court stj --limit 2
 | dr search table output | ✅ | Aligned table with Date/Tipo/Número/Emissor |
 | dr today | ✅ | Returns 0 on weekend (expected) |
 | dr search --quiet pipe jq | ✅ | Clean pipe, jq parses |
-| dr fetch | ✅ | Returns error with exit 1 (not implemented) |
+| dr search --fetch-full (portaria) | ✅ | Full legislation text fetched, PDF/ELI/DR URLs present |
+| dr search --fetch-full JSON | ✅ | Valid JSON with texto (2650+ chars), url_pdf, eli, dr_url, _disclaimer |
+| dr search follow-up (specific act) | ✅ | Portaria 123-A/2026 full text (3229 chars), conteudo_id present |

@@ -164,6 +164,10 @@ pub struct DrSearchArgs {
     /// Maximum number of results to return
     #[arg(long, default_value_t = 50)]
     pub limit: u32,
+
+    /// Fetch full text for each result
+    #[arg(long)]
+    pub fetch_full: bool,
 }
 
 #[derive(Args)]

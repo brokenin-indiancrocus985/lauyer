@@ -88,6 +88,9 @@ lauyer dr search --content decisoes --recent 1m
 # Date range
 lauyer dr search --type portaria --since 2026-03-01 --until 2026-03-21
 
+# Fetch full text for each result
+lauyer dr search --type portaria --recent 1w --limit 3 --fetch-full
+
 # Today's publications
 lauyer dr today
 lauyer dr today --type portaria
@@ -153,7 +156,9 @@ lauyer serve --port 3000
 
 **`GET /dgsi/courts`** `?format=json`
 
-**`GET /dr/search`** `?q=trabalho&type=portaria&content=atos-1&since=2026-03-01&limit=10&format=json`
+**`GET /dr/search`** `?q=trabalho&type=portaria&content=atos-1&since=2026-03-01&limit=10&fetch_full=true&format=json`
+
+**`GET /dr/fetch`** `?id=1075294778&tipo=portaria&numero=123-A/2026/1&year=2026&format=json`
 
 **`GET /dr/today`** `?type=portaria&format=json`
 
@@ -172,37 +177,72 @@ docker run -p 3000:3000 lauyer serve
 
 ## AI Agents
 
-If you are an AI agent, you can use `lauyer` as a skill to search Portuguese legal databases. Install the binary and call it directly from your tool/shell integration.
+If you are an AI agent, you can use `lauyer` as a skill to search Portuguese legal databases. Download the binary and call it directly from your tool/shell integration.
+
+**Important:** Extracted text MAY contain interpretation errors. Always verify against the official source links provided in the output (`dr_url`, `eli`, `url_pdf`).
 
 ### Quick setup
 
 Download the pre-compiled binary for your platform from [Releases](https://github.com/nikuscs/lauyer/releases) and place it in your `PATH`.
 
+### Searching legislation (Diário da República)
+
 ```bash
-# Search jurisprudence (returns markdown by default)
-lauyer dgsi search "usucapião" --court stj --limit 5 --format json
+# Search recent legislation
+lauyer --format json --quiet dr search "trabalho" --type decreto-lei --recent 1m
 
-# Search legislation
-lauyer dr search "trabalho" --type decreto-lei --recent 1m --format json
+# Search with full text of each act
+lauyer --format json --quiet dr search --type portaria --recent 1w --limit 5 --fetch-full
 
-# Fetch a full court decision
-lauyer dgsi fetch "https://www.dgsi.pt/jstj.nsf/..." --format json
+# The --fetch-full flag returns the complete text of each act, plus:
+#   - dr_url: link to verify on the official DR website
+#   - url_pdf: direct PDF download
+#   - eli: European Legislation Identifier
+#   - _disclaimer: reminder to verify against official source
+```
+
+### Following up on a specific act
+
+When a user asks about a specific act from search results, search for it by name and use `--fetch-full`:
+
+```bash
+# User asks about "Portaria 123-A/2026"
+lauyer --format json --quiet dr search "portaria 123-A/2026" --limit 1 --fetch-full
+```
+
+### Searching jurisprudence (DGSI courts)
+
+```bash
+# Search all 10 courts in parallel
+lauyer --format json --quiet dgsi search "usucapião" --limit 5
+
+# Search specific court with full decision text
+lauyer --format json --quiet dgsi search "contrato trabalho" --court stj --limit 3 --fetch-full
+
+# Fetch a single decision by URL
+lauyer --format json --quiet dgsi fetch "https://www.dgsi.pt/jstj.nsf/..."
 ```
 
 ### As a REST API
 
 ```bash
 lauyer serve --port 3000
-# Then call endpoints: GET /dgsi/search?q=usucapiao&court=stj&limit=5&format=json
+
+# Search with full text
+# GET /dr/search?q=trabalho&type=portaria&recent=1w&limit=5&fetch_full=true&format=json
+
+# Fetch a specific act by ID
+# GET /dr/fetch?id=1075294778&tipo=portaria&numero=123-A/2026/1&year=2026&format=json
 ```
 
 ### Tips for agents
 
 - Use `--format json` for structured output you can parse
+- Use `--quiet` to suppress progress output (cleaner for parsing)
+- Use `--fetch-full` on searches to get full legislation/decision text inline
 - Use `--limit` to control result count and stay within context limits
-- Use `--fetch-full` on searches to get full decision text inline
-- Use `--no-compact` if you need the full unprocessed legal text
-- Pipe through `jq` for field extraction: `lauyer dgsi search "dano" --format json | jq '.[].summary'`
+- Always present the `dr_url` or `eli` link to the user so they can verify on the official source
+- The `conteudo_id` field in search results can be used to fetch full text later
 
 Feel free to copy and adapt this tool's interface into your own skill definitions or MCP server configurations.
 

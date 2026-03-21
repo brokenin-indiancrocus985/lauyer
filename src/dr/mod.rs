@@ -1,9 +1,11 @@
 pub mod content_types;
+pub mod detail;
 pub mod markdown;
 pub mod search;
 pub mod session;
 
 pub use content_types::{DrContentType, resolve_act_type};
+pub use detail::{DrDetailResult, fetch_detail};
 pub use search::{DrSearchParams, DrSearchResponse, DrSearchResult, apply_limit, search};
 pub use session::DrSession;
 

@@ -877,3 +877,37 @@ async fn app_error_io_variant_is_500() {
     let response = err.into_response();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+#[tokio::test]
+async fn dr_fetch_missing_id_returns_400() {
+    let app = test_router();
+
+    // No id param should return 400 (missing required query param)
+    let response = app
+        .oneshot(Request::builder().uri("/dr/fetch?format=json").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn dr_fetch_route_exists() {
+    let app = test_router();
+
+    // With id param but unable to connect to DR API (no real server),
+    // should get a 502/503 error (not 404)
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/dr/fetch?id=999999&tipo=portaria&numero=1/2026&year=2026&format=json")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // We expect a server error (502 or 503) since it tries to create a DR session
+    // but the endpoint should exist (not 404)
+    assert_ne!(response.status(), StatusCode::NOT_FOUND, "route must exist");
+}

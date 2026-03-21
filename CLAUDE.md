@@ -24,7 +24,7 @@ src/
 ├── format.rs        # OutputFormat, Renderable trait, render pipeline, DateRange, parse_recent
 ├── compact.rs       # compact_text (whitespace/HTML/boilerplate), strip_stopwords (Portuguese)
 ├── dgsi/mod.rs      # DGSI module (court search, decision fetching)
-├── dr/mod.rs        # DR module (session init, search, document fetching)
+├── dr/mod.rs        # DR module (session init, search, detail fetching via OutSystems API)
 └── server/mod.rs    # Axum HTTP server mode
 tests/
 ├── compact_test.rs  # compact_text, strip_stopwords, boilerplate tests
@@ -40,7 +40,7 @@ tests/
 - **No `println!`/`eprintln!`**: denied by clippy. Use `tracing::{info,warn,error}!` for logs, `std::io::Write` for output
 - **No `unwrap()`/`expect()` in library code**: propagate with `?`
 - **Modules decoupled**: dgsi/ and dr/ never import from each other. Shared code lives in http.rs, config.rs, format.rs, compact.rs
-- **No inline tests**: all tests go in separate files under `tests/`. Source files in `src/` must NOT contain `#[cfg(test)]` modules. Integration tests that hit real APIs use `#[ignore]` and run via `cargo test -- --ignored`
+- **No inline tests**: all tests go in separate files under `tests/`. Source files in `src/` must NOT contain `#[cfg(test)]` modules. Real-world tests belong in `docs/real-world-test.md`, not as `#[ignore]` tests
 
 ## Commands
 
@@ -48,7 +48,6 @@ tests/
 cargo fmt                     # Format
 cargo clippy --all-targets    # Lint (pedantic + nursery)
 cargo test                    # Unit tests (no network)
-cargo test -- --ignored       # Integration tests (needs network)
 cargo build --release         # Release build (LTO, stripped)
 ```
 

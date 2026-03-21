@@ -121,6 +121,9 @@ lauyer dr search --content decisoes --recent 1m
 # Date range
 lauyer dr search --type portaria --since 2026-03-01 --until 2026-03-21
 
+# Fetch full text for each result
+lauyer dr search --type portaria --recent 1w --limit 3 --fetch-full
+
 # Today's publications
 lauyer dr today
 lauyer dr today --type portaria
@@ -143,6 +146,7 @@ lauyer dr types
 | `--until` | Latest date (YYYY-MM-DD) | `--until 2026-03-21` |
 | `--recent` | Relative window (1w, 1m, 1y) | `--recent 1w` |
 | `--limit` | Max results (default: 50) | `--limit 10` |
+| `--fetch-full` | Fetch full legislation text | `--fetch-full` |
 
 ## Output Formats
 
@@ -279,6 +283,7 @@ curl "$LAUYER_URL/dgsi/fetch?url=https://www.dgsi.pt/jstj.nsf/...&format=json"
 | `since` | no | Start date `YYYY-MM-DD` |
 | `until` | no | End date `YYYY-MM-DD` |
 | `limit` | no | Max results (default: 50) |
+| `fetch_full` | no | `true` to fetch full legislation text |
 | `compact` | no | `true`/`false` |
 | `format` | no | `markdown`, `json`, `table` |
 
@@ -306,18 +311,37 @@ curl "$LAUYER_URL/dr/today?type=portaria&format=json"
 
 ### `GET /dr/fetch`
 
-Returns `501 Not Implemented` — individual DR document fetching is not yet supported.
+Fetch full text of a specific DR legislation act by its document ID.
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| `id` | yes | Document ID (`conteudo_id` from search results) |
+| `tipo` | no | Act type (e.g. `portaria`, `decreto-lei`) |
+| `numero` | no | Act number (e.g. `123-A/2026/1`) |
+| `year` | no | Publication year |
+| `format` | no | `markdown`, `json`, `table` |
+| `compact` | no | `true`/`false` |
+
+```bash
+curl "$LAUYER_URL/dr/fetch?id=1075294778&tipo=portaria&numero=123-A/2026/1&year=2026&format=json"
+```
 
 ## Agent Guidelines
+
+### Important: Interpretation Disclaimer
+
+Extracted text MAY contain interpretation errors. When presenting DR full text to users, **always** include the official verification link (`dr_url` or `eli` from the response) so they can check the original source.
 
 ### Best Practices
 
 1. **Default to markdown** output when presenting to users — it's pre-compacted for LLM context
 2. **Use `--format json`** when you need to process or filter results programmatically
 3. **Limit results** with `--limit 5-10` for quick answers, `--limit 20-50` for thorough research
-4. **Use `--fetch-full`** only when the user needs actual decision text, not just metadata
+4. **Use `--fetch-full`** only when the user needs actual decision/legislation text, not just metadata
 5. **Use `--recent`** to scope searches temporally — `1w`, `1m`, `6m`, `1y`
 6. **Combine `--court` with `--sort date`** for targeted, chronological results
+7. **For DR follow-ups**, search by act name with `--fetch-full`: `lauyer dr search "portaria 123-A/2026" --limit 1 --fetch-full`
+8. **The `conteudo_id`** field in DR search results can be used later to fetch full text via `/dr/fetch`
 
 ### Response Formatting
 
@@ -327,7 +351,8 @@ When presenting results to users:
 - Include the DGSI URL for each result so users can read the full decision
 - Mention total results found and suggest narrowing if too many
 - For DR results, highlight the act type, number, and publication date
-- Offer to fetch full text if the user wants to read a specific decision
+- When showing DR full text, always include the `dr_url` link for official verification
+- Offer to fetch full text if the user wants to read a specific decision or legislation
 
 ### Understanding Courts
 

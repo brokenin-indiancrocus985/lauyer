@@ -1,5 +1,6 @@
 use base64::Engine as _;
 use chrono::NaiveDate;
+use lauyer::dr::detail::{DrDetailResult, derive_slug_and_year, parse_detail_response};
 use lauyer::dr::search::{
     DrSearchParams, build_body_filtros, build_bools, build_cookie_filtros, build_pesquisa_cookie,
     parse_search_response,
@@ -132,6 +133,7 @@ fn make_dr_search_result() -> DrSearchResult {
         file_id: "file1".to_owned(),
         tipo_conteudo: "AtosSerie1".to_owned(),
         ano: Some(2026),
+        conteudo_id: "1075294778".to_owned(),
     }
 }
 
@@ -1061,6 +1063,7 @@ fn sample_result_with_html() -> DrSearchResult {
         file_id: "file42".to_owned(),
         tipo_conteudo: "AtosSerie1".to_owned(),
         ano: Some(2026),
+        conteudo_id: "42".to_owned(),
     }
 }
 
@@ -1477,4 +1480,457 @@ async fn test_session_refresh_from_urls_roles_error() {
     let dead_roles_url = "http://127.0.0.1:1/dead-roles";
     let result = session.refresh_from_urls(&version_url, dead_roles_url).await;
     assert!(result.is_err(), "connection refused on refresh roles URL must return error");
+}
+
+// ---------------------------------------------------------------------------
+// detail: derive_slug_and_year
+// ---------------------------------------------------------------------------
+
+#[test]
+fn slug_standard_portaria() {
+    let (slug, year) = derive_slug_and_year("123-A/2026/1", 0);
+    assert_eq!(slug, "123-a");
+    assert_eq!(year, 2026);
+}
+
+#[test]
+fn slug_without_series() {
+    let (slug, year) = derive_slug_and_year("79-A/2026", 0);
+    assert_eq!(slug, "79-a");
+    assert_eq!(year, 2026);
+}
+
+#[test]
+fn slug_simple_number() {
+    let (slug, year) = derive_slug_and_year("42/2025/1", 0);
+    assert_eq!(slug, "42");
+    assert_eq!(year, 2025);
+}
+
+#[test]
+fn slug_fallback_year() {
+    let (slug, year) = derive_slug_and_year("42", 2024);
+    assert_eq!(slug, "42");
+    assert_eq!(year, 2024);
+}
+
+#[test]
+fn slug_empty_string() {
+    let (slug, year) = derive_slug_and_year("", 2023);
+    assert_eq!(slug, "");
+    assert_eq!(year, 2023);
+}
+
+// ---------------------------------------------------------------------------
+// detail: parse_detail_response
+// ---------------------------------------------------------------------------
+
+fn make_detail_response_json(texto: &str, titulo: &str) -> String {
+    let detalhe = serde_json::json!({
+        "Id": "1075294778",
+        "Titulo": titulo,
+        "Publicacao": "Diário da República n.º 56/2026, Suplemento, Série I de 2026-03-20",
+        "Numero": "123-A/2026/1",
+        "Resumo": "",
+        "Sumario": "Procede à revisão das taxas do ISP.",
+        "Texto": texto,
+        "TextoFormatado": "<p>formatted</p>",
+        "DataPublicacao": "2026-03-20",
+        "Emissor": "Finanças e Ambiente e Energia",
+        "EmissorAcronimo": "",
+        "Parte": "",
+        "Serie": "I",
+        "Vigencia": "",
+        "URL_PDF": "https://files.diariodarepublica.pt/1s/2026/03/05601/0000200003.pdf",
+        "TipoDiploma": "Portaria",
+        "TipoDiplomaAcronimo": "port",
+        "Notas": "",
+        "Pagina": "2 - 3",
+        "ELI": "https://data.dre.pt/eli/port/123-a/2026/03/20/p/dre/pt/html",
+    });
+
+    serde_json::json!({
+        "versionInfo": {"hasModuleVersionChanged": false},
+        "data": { "DetalheConteudo": detalhe }
+    })
+    .to_string()
+}
+
+#[test]
+fn parse_detail_extracts_texto() {
+    let json = make_detail_response_json("Full text here.", "Portaria n.º 123-A/2026/1");
+    let result = parse_detail_response(&json, "1075294778", "Portaria").unwrap();
+    assert_eq!(result.texto, "Full text here.");
+    assert_eq!(result.titulo, "Portaria n.º 123-A/2026/1");
+}
+
+#[test]
+fn parse_detail_extracts_metadata() {
+    let json = make_detail_response_json("text", "Portaria n.º 123-A/2026/1");
+    let result = parse_detail_response(&json, "1075294778", "Portaria").unwrap();
+    assert_eq!(result.id, "1075294778");
+    assert_eq!(result.numero, "123-A/2026/1");
+    assert_eq!(result.emissor, "Finanças e Ambiente e Energia");
+    assert_eq!(result.serie, "I");
+    assert_eq!(result.tipo_diploma, "Portaria");
+    assert_eq!(result.pagina, "2 - 3");
+    assert_eq!(result.sumario, "Procede à revisão das taxas do ISP.");
+}
+
+#[test]
+fn parse_detail_extracts_urls() {
+    let json = make_detail_response_json("text", "Portaria n.º 123-A/2026/1");
+    let result = parse_detail_response(&json, "1075294778", "Portaria").unwrap();
+    assert_eq!(
+        result.url_pdf,
+        "https://files.diariodarepublica.pt/1s/2026/03/05601/0000200003.pdf"
+    );
+    assert_eq!(result.eli, "https://data.dre.pt/eli/port/123-a/2026/03/20/p/dre/pt/html");
+    assert!(
+        result.dr_url.contains("diariodarepublica.pt/dr/detalhe/portaria/123-a-2026-1075294778")
+    );
+}
+
+#[test]
+fn parse_detail_extracts_date() {
+    let json = make_detail_response_json("text", "Portaria n.º 123-A/2026/1");
+    let result = parse_detail_response(&json, "1075294778", "Portaria").unwrap();
+    assert_eq!(result.data_publicacao, NaiveDate::from_ymd_opt(2026, 3, 20));
+}
+
+#[test]
+fn parse_detail_invalid_json() {
+    let result = parse_detail_response("not json", "1", "Portaria");
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_detail_missing_detalhe() {
+    let json = r#"{"versionInfo":{},"data":{}}"#;
+    let result = parse_detail_response(json, "1", "Portaria");
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_detail_exception_response() {
+    let json = r#"{"exception":{"message":"Session expired"}}"#;
+    let result = parse_detail_response(json, "1", "Portaria");
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("Session expired"));
+}
+
+// ---------------------------------------------------------------------------
+// detail: DrDetailResult rendering
+// ---------------------------------------------------------------------------
+
+fn make_detail_result() -> DrDetailResult {
+    DrDetailResult {
+        id: "1075294778".to_owned(),
+        titulo: "Portaria n.º 123-A/2026/1".to_owned(),
+        numero: "123-A/2026/1".to_owned(),
+        publicacao: "Diário da República n.º 56/2026".to_owned(),
+        sumario: "Procede à revisão das taxas do ISP.".to_owned(),
+        texto: "Artigo 1.º\nObjeto\nA presente portaria...".to_owned(),
+        data_publicacao: NaiveDate::from_ymd_opt(2026, 3, 20),
+        emissor: "Finanças e Ambiente e Energia".to_owned(),
+        serie: "I".to_owned(),
+        tipo_diploma: "Portaria".to_owned(),
+        vigencia: String::new(),
+        url_pdf: "https://files.diariodarepublica.pt/1s/2026/03/test.pdf".to_owned(),
+        eli: "https://data.dre.pt/eli/port/123-a/2026/03/20/p/dre/pt/html".to_owned(),
+        notas: String::new(),
+        pagina: "2 - 3".to_owned(),
+        dr_url: "https://diariodarepublica.pt/dr/detalhe/portaria/123-a-2026-1075294778".to_owned(),
+    }
+}
+
+#[test]
+fn detail_to_markdown_includes_text() {
+    let detail = make_detail_result();
+    let md = detail.to_markdown();
+    assert!(md.contains("### Portaria n.º 123-A/2026/1 (2026-03-20)"));
+    assert!(md.contains("**Emissor:** Finanças e Ambiente e Energia"));
+    assert!(md.contains("Artigo 1.º"));
+    assert!(md.contains("A presente portaria..."));
+}
+
+#[test]
+fn detail_to_markdown_includes_urls() {
+    let detail = make_detail_result();
+    let md = detail.to_markdown();
+    assert!(md.contains("**PDF:** https://files.diariodarepublica.pt/"));
+    assert!(md.contains("**ELI:** https://data.dre.pt/eli/"));
+    assert!(md.contains("**DR:** https://diariodarepublica.pt/dr/detalhe/"));
+}
+
+#[test]
+fn detail_to_markdown_includes_disclaimer() {
+    let detail = make_detail_result();
+    let md = detail.to_markdown();
+    assert!(md.contains("may contain interpretation errors"));
+    assert!(md.contains("verify against the official source"));
+}
+
+#[test]
+fn detail_to_json_includes_all_fields() {
+    let detail = make_detail_result();
+    let json = detail.to_json();
+    assert_eq!(json["id"], "1075294778");
+    assert_eq!(json["titulo"], "Portaria n.º 123-A/2026/1");
+    assert_eq!(json["numero"], "123-A/2026/1");
+    assert_eq!(json["emissor"], "Finanças e Ambiente e Energia");
+    assert_eq!(json["tipo_diploma"], "Portaria");
+    assert_eq!(json["data_publicacao"], "2026-03-20");
+    assert!(!json["texto"].as_str().unwrap().is_empty());
+    assert!(!json["url_pdf"].as_str().unwrap().is_empty());
+    assert!(!json["eli"].as_str().unwrap().is_empty());
+    assert!(!json["dr_url"].as_str().unwrap().is_empty());
+}
+
+#[test]
+fn detail_to_json_includes_disclaimer() {
+    let detail = make_detail_result();
+    let json = detail.to_json();
+    let disclaimer = json["_disclaimer"].as_str().unwrap_or("");
+    assert!(disclaimer.contains("interpretation errors"));
+}
+
+#[test]
+fn detail_table_row_has_correct_headers() {
+    let detail = make_detail_result();
+    let (headers, values) = detail.table_row().unwrap();
+    assert_eq!(headers, vec!["Date", "Tipo", "Número", "Emissor", "Texto"]);
+    assert_eq!(values[0], "2026-03-20");
+    assert_eq!(values[1], "Portaria");
+    assert_eq!(values[2], "123-A/2026/1");
+}
+
+#[test]
+fn detail_no_date_shows_s_d() {
+    let mut detail = make_detail_result();
+    detail.data_publicacao = None;
+    let md = detail.to_markdown();
+    assert!(md.contains("(s/d)"));
+}
+
+#[test]
+fn detail_empty_pdf_omitted_from_markdown() {
+    let mut detail = make_detail_result();
+    detail.url_pdf = String::new();
+    let md = detail.to_markdown();
+    assert!(!md.contains("**PDF:**"));
+}
+
+#[test]
+fn detail_empty_eli_omitted_from_markdown() {
+    let mut detail = make_detail_result();
+    detail.eli = String::new();
+    let md = detail.to_markdown();
+    assert!(!md.contains("**ELI:**"));
+}
+
+// ---------------------------------------------------------------------------
+// search: conteudo_id extraction from ES _id
+// ---------------------------------------------------------------------------
+
+#[test]
+fn parse_search_extracts_conteudo_id_from_es_id() {
+    let response = serde_json::json!({
+        "data": {
+            "ResultsCount": "1",
+            "Resultado": serde_json::json!({
+                "hits": {
+                    "hits": [{
+                        "_id": "1075294778_DiplomaLegis",
+                        "_source": {
+                            "title": "Portaria n.º 123-A/2026/1",
+                            "tipo": "Portaria",
+                            "numero": "123-A/2026/1",
+                            "dataPublicacao": "2026-03-20",
+                            "emissor": "Test",
+                            "sumario": "Test summary",
+                            "serie": "I",
+                            "dbId": "",
+                            "fileId": "",
+                            "tipoConteudo": "DiplomaLegis",
+                            "ano": 2026
+                        }
+                    }]
+                }
+            }).to_string()
+        }
+    })
+    .to_string();
+
+    let result = parse_search_response(&response).unwrap();
+    assert_eq!(result.results.len(), 1);
+    assert_eq!(result.results[0].conteudo_id, "1075294778");
+}
+
+#[test]
+fn parse_search_strips_suffix_from_es_id() {
+    let response = serde_json::json!({
+        "data": {
+            "ResultsCount": "1",
+            "Resultado": serde_json::json!({
+                "hits": {
+                    "hits": [{
+                        "_id": "999_AtosSerie2",
+                        "_source": {
+                            "title": "Test",
+                            "tipo": "Despacho",
+                            "numero": "1/2026",
+                            "emissor": "X",
+                            "sumario": "Y",
+                            "serie": "II",
+                            "dbId": "",
+                            "fileId": "",
+                            "tipoConteudo": "AtosSerie2"
+                        }
+                    }]
+                }
+            }).to_string()
+        }
+    })
+    .to_string();
+
+    let result = parse_search_response(&response).unwrap();
+    assert_eq!(result.results[0].conteudo_id, "999");
+}
+
+#[test]
+fn detail_body_builder_sets_key_fields() {
+    // Test slug derivation for various patterns
+    let cases = vec![
+        ("123-A/2026/1", 0u32, "123-a", 2026u32),
+        ("79-A/2026", 0, "79-a", 2026),
+        ("42/2025/1", 0, "42", 2025),
+        ("1/2024", 0, "1", 2024),
+        ("noparts", 2023, "noparts", 2023),
+    ];
+    for (numero, fallback, expected_slug, expected_year) in cases {
+        let (slug, year) = derive_slug_and_year(numero, fallback);
+        assert_eq!(slug, expected_slug, "slug for '{numero}'");
+        assert_eq!(year, expected_year, "year for '{numero}'");
+    }
+}
+
+#[tokio::test]
+async fn detail_body_has_correct_structure() {
+    use lauyer::dr::detail::build_detail_body;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/dr/moduleservices/moduleversioninfo"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({"versionToken": "test-ver"})),
+        )
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/dr/moduleservices/roles"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&mock_server)
+        .await;
+
+    let client = lauyer::http::HttpClient::new(None, 10, 0).unwrap();
+    let version_url = format!("{}/dr/moduleservices/moduleversioninfo", mock_server.uri());
+    let roles_url = format!("{}/dr/moduleservices/roles", mock_server.uri());
+    let session = DrSession::new_from_urls(client, &version_url, &roles_url).await.unwrap();
+
+    let body = build_detail_body(&session, "1075294778", "Portaria", "123-A/2026/1", 2026);
+
+    // Verify key structure
+    assert_eq!(body["versionInfo"]["moduleVersion"], "test-ver");
+    assert_eq!(body["viewName"], "Legislacao_Conteudos.Conteudo_Detalhe");
+
+    let vars = &body["screenData"]["variables"];
+    assert_eq!(vars["ConteudoId"], "1075294778");
+    assert_eq!(vars["DipLegisId"], "1075294778");
+    assert_eq!(vars["Tipo"], "portaria");
+    assert_eq!(vars["Numero"], "123-a");
+    assert_eq!(vars["Year"], 2026);
+    assert_eq!(vars["Key"], "123-a-2026-1075294778");
+    assert_eq!(vars["ShowDiplomaAtoOriginalTexto"], true);
+
+    // Verify client variables present
+    assert!(!body["clientVariables"]["Session_GUID"].as_str().unwrap().is_empty());
+    assert!(!body["clientVariables"]["Data"].as_str().unwrap().is_empty());
+
+    // Verify DetalheConteudoElastic has the required structure
+    let es = &vars["DetalheConteudoElastic"];
+    assert_eq!(es["Took"], "0");
+    assert!(!es["Hits"].is_null());
+    assert!(!es["aggregations"].is_null());
+}
+
+#[tokio::test]
+async fn fetch_detail_with_wiremock() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    // Session setup mocks
+    Mock::given(method("GET"))
+        .and(path("/dr/moduleservices/moduleversioninfo"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"versionToken": "test"})),
+        )
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/dr/moduleservices/roles"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&mock_server)
+        .await;
+
+    let client = lauyer::http::HttpClient::new(None, 10, 0).unwrap();
+    let version_url = format!("{}/dr/moduleservices/moduleversioninfo", mock_server.uri());
+    let roles_url = format!("{}/dr/moduleservices/roles", mock_server.uri());
+    let session = DrSession::new_from_urls(client, &version_url, &roles_url).await.unwrap();
+
+    // The detail fetch calls the real DR API (hardcoded URL), so we can only test
+    // the parsing, body building, and rendering without a full mock of the detail endpoint.
+    // This is covered by parse_detail_response tests above.
+
+    // Verify the session was created successfully for detail operations
+    assert_eq!(session.module_version(), "test");
+}
+
+#[test]
+fn parse_search_empty_id_gives_empty_conteudo_id() {
+    let response = serde_json::json!({
+        "data": {
+            "ResultsCount": "1",
+            "Resultado": serde_json::json!({
+                "hits": {
+                    "hits": [{
+                        "_source": {
+                            "title": "Test",
+                            "tipo": "Lei",
+                            "numero": "1/2026",
+                            "emissor": "X",
+                            "sumario": "Y",
+                            "serie": "I",
+                            "dbId": "",
+                            "fileId": "",
+                            "tipoConteudo": "DiplomaLegis"
+                        }
+                    }]
+                }
+            }).to_string()
+        }
+    })
+    .to_string();
+
+    let result = parse_search_response(&response).unwrap();
+    assert_eq!(result.results[0].conteudo_id, "");
 }

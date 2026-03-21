@@ -261,6 +261,17 @@ pub struct DrSearchQueryParams {
     pub limit: Option<u32>,
     pub format: Option<String>,
     pub compact: Option<bool>,
+    pub fetch_full: Option<bool>,
+}
+
+#[derive(Deserialize)]
+pub struct DrFetchQueryParams {
+    pub id: String,
+    pub tipo: Option<String>,
+    pub numero: Option<String>,
+    pub year: Option<u32>,
+    pub format: Option<String>,
+    pub compact: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -352,9 +363,30 @@ async fn dr_search(
 
     let compact = params.compact.unwrap_or(state.config.output.compact);
     let fmt = parse_output_format(params.format.as_deref());
+    let fetch_full = params.fetch_full.unwrap_or(false);
 
-    let renderables: Vec<Box<dyn Renderable>> =
-        response.results.into_iter().map(|r| Box::new(r) as Box<dyn Renderable>).collect();
+    let renderables: Vec<Box<dyn Renderable>> = if fetch_full {
+        let mut full_results: Vec<Box<dyn Renderable>> = Vec::new();
+        for r in &response.results {
+            if r.conteudo_id.is_empty() {
+                full_results.push(Box::new(r.clone()));
+                continue;
+            }
+            let year = r.ano.unwrap_or_else(|| {
+                r.data_publicacao.map_or(0, |d| d.format("%Y").to_string().parse().unwrap_or(0))
+            });
+            match dr::fetch_detail(&session, &r.conteudo_id, &r.tipo, &r.numero, year).await {
+                Ok(detail) => full_results.push(Box::new(detail)),
+                Err(e) => {
+                    tracing::warn!(numero = r.numero, error = %e, "Failed to fetch detail");
+                    full_results.push(Box::new(r.clone()));
+                }
+            }
+        }
+        full_results
+    } else {
+        response.results.into_iter().map(|r| Box::new(r) as Box<dyn Renderable>).collect()
+    };
 
     let strip_sw = state.config.output.strip_stopwords;
     let search_response = SearchResponse {
@@ -425,6 +457,40 @@ async fn dr_today(
     Ok(format_response(&rendered, &fmt))
 }
 
+async fn dr_fetch(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<DrFetchQueryParams>,
+) -> Result<Response, AppError> {
+    let client = HttpClient::new(
+        state.config.http.proxy.as_deref(),
+        state.config.http.timeout_secs,
+        state.config.http.retries,
+    )
+    .map_err(AppError)?;
+    let session = dr::DrSession::new(client).await.map_err(AppError)?;
+
+    let tipo = params.tipo.as_deref().unwrap_or("portaria");
+    let numero = params.numero.as_deref().unwrap_or("");
+    let year = params.year.unwrap_or(0);
+
+    let detail =
+        dr::fetch_detail(&session, &params.id, tipo, numero, year).await.map_err(AppError)?;
+
+    let compact = params.compact.unwrap_or(state.config.output.compact);
+    let fmt = parse_output_format(params.format.as_deref());
+    let strip_sw = state.config.output.strip_stopwords;
+
+    let response = SearchResponse {
+        source: "Diário da República".to_owned(),
+        query: params.id,
+        total: 1,
+        results: vec![Box::new(detail)],
+    };
+    let rendered = format::render(&response, &fmt, compact, strip_sw);
+
+    Ok(format_response(&rendered, &fmt))
+}
+
 async fn dr_types(Query(params): Query<DrTypesQueryParams>) -> Response {
     let types = dr::list_act_types();
     let fmt = parse_output_format(params.format.as_deref());
@@ -485,6 +551,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/dgsi/fetch", get(dgsi_fetch))
         .route("/dgsi/courts", get(dgsi_courts))
         .route("/dr/search", get(dr_search))
+        .route("/dr/fetch", get(dr_fetch))
         .route("/dr/today", get(dr_today))
         .route("/dr/types", get(dr_types))
         .with_state(state)

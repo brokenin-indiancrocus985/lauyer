@@ -367,15 +367,53 @@ async fn main() -> anyhow::Result<()> {
                 let response = dr::search(&session, &params).await.context("DR search failed")?;
                 let response = dr::apply_limit(response, args.limit);
 
+                if let Some(ref pb) = pb {
+                    pb.set_message(format!("{} results found", response.results.len()));
+                }
+
+                let renderables: Vec<Box<dyn Renderable>> = if args.fetch_full
+                    && !response.results.is_empty()
+                {
+                    if let Some(ref pb) = pb {
+                        pb.set_message("Fetching full text...");
+                    }
+
+                    let mut full_results: Vec<Box<dyn Renderable>> = Vec::new();
+                    for r in &response.results {
+                        if r.conteudo_id.is_empty() {
+                            tracing::warn!(
+                                numero = r.numero,
+                                "No conteudo_id — skipping full fetch"
+                            );
+                            full_results.push(Box::new(r.clone()));
+                            continue;
+                        }
+                        let year = r.ano.unwrap_or_else(|| {
+                            r.data_publicacao
+                                .map_or(0, |d| d.format("%Y").to_string().parse().unwrap_or(0))
+                        });
+                        match dr::fetch_detail(&session, &r.conteudo_id, &r.tipo, &r.numero, year)
+                            .await
+                        {
+                            Ok(detail) => full_results.push(Box::new(detail)),
+                            Err(e) => {
+                                tracing::warn!(numero = r.numero, error = %e, "Failed to fetch detail");
+                                full_results.push(Box::new(r.clone()));
+                            }
+                        }
+                    }
+                    full_results
+                } else {
+                    response
+                        .results
+                        .into_iter()
+                        .map(|r| Box::new(r) as Box<dyn Renderable>)
+                        .collect()
+                };
+
                 if let Some(pb) = pb {
                     pb.finish_with_message(format!("done, {} results", response.total));
                 }
-
-                let renderables: Vec<Box<dyn Renderable>> = response
-                    .results
-                    .into_iter()
-                    .map(|r| Box::new(r) as Box<dyn Renderable>)
-                    .collect();
 
                 let search_response = format::SearchResponse {
                     source: "Diário da República".to_owned(),

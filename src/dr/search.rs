@@ -42,6 +42,9 @@ pub struct DrSearchResult {
     pub file_id: String,
     pub tipo_conteudo: String,
     pub ano: Option<u32>,
+    /// Document ID used to fetch full text via the detail API.
+    /// Extracted from ES `_id`, or `_source.ConteudoId` / `_source.Id`.
+    pub conteudo_id: String,
 }
 
 /// Aggregate search response.
@@ -440,6 +443,17 @@ fn parse_hit(hit: &Value) -> Option<DrSearchResult> {
 
     let ano = source.get("ano").and_then(Value::as_u64).map(|v| v as u32);
 
+    // Extract document ID: try hit._id first, then _source.ConteudoId, then _source.Id.
+    // The ES _id may have a suffix like "_DiplomaLegis" — strip it to get the numeric ID.
+    let raw_id = hit
+        .get("_id")
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .or_else(|| source.get("ConteudoId").and_then(Value::as_str).filter(|s| *s != "0"))
+        .or_else(|| source.get("Id").and_then(Value::as_str).filter(|s| !s.is_empty()))
+        .unwrap_or("");
+    let conteudo_id = raw_id.split('_').next().unwrap_or("").to_owned();
+
     Some(DrSearchResult {
         title: get_str("title"),
         tipo: get_str("tipo"),
@@ -452,5 +466,6 @@ fn parse_hit(hit: &Value) -> Option<DrSearchResult> {
         file_id: get_str("fileId"),
         tipo_conteudo: get_str("tipoConteudo"),
         ano,
+        conteudo_id,
     })
 }
