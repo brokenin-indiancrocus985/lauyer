@@ -4,7 +4,7 @@
 ![Release](https://img.shields.io/github/v/release/nikuscs/lauyer)
 ![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-red.svg)
 
-**Fast Rust CLI for searching Portuguese court jurisprudence (DGSI) and legislation (Diário da República), optimized for LLM consumption.**
+**Fast CLI for searching Portuguese court jurisprudence (DGSI) and legislation (Diário da República), optimized for LLM consumption. Works as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Claude.ai](https://claude.ai), [OpenAI Codex](https://openai.com/index/openai-codex/), and any AI agent.**
 
 > **Disclaimer:** This project is for **educational purposes and AI automation research only**.
 > The authors are not responsible for any misuse or for any damages resulting from the use of this tool.
@@ -19,6 +19,7 @@
 
 - **Parallel search** — queries all 10 DGSI courts simultaneously
 - **DR legislation** — searches Diário da República acts (Portarias, Decretos-Lei, Leis, Despachos)
+- **AI-agent ready** — works as a skill in Claude Code, Claude.ai, Codex, or any agent that can call CLI tools
 - **LLM-ready** — markdown output by default with compact mode that strips legal boilerplate
 - **Latin-1 handling** — automatic ISO-8859-1 → UTF-8 decoding for DGSI
 - **Flexible output** — Markdown, JSON, Table — pipe to `jq`, feed to scripts, or read in terminal
@@ -177,7 +178,7 @@ docker run -p 3000:3000 lauyer serve
 
 ## AI Agents
 
-If you are an AI agent, you can use `lauyer` as a skill to search Portuguese legal databases. Download the binary and call it directly from your tool/shell integration.
+If you are an AI agent (Claude Code, Claude.ai, OpenAI Codex, or any tool-calling agent), you can use `lauyer` as a skill to search Portuguese legal databases. Download the binary and call it directly from your tool/shell integration. A `SKILL.md` file is included for Claude Code skill registration.
 
 **Important:** Extracted text MAY contain interpretation errors. Always verify against the official source links provided in the output (`dr_url`, `eli`, `url_pdf`).
 
